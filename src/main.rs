@@ -1,42 +1,47 @@
-use std::{
-    fs,
-    io::{prelude::*, BufReader},
-    net::{TcpListener, TcpStream},
-};
+use actix_web::{get, post, web, App, HttpResponse, HttpServer, Responder};
+use awmp;
 
-fn main() {
-    let listener = TcpListener::bind("127.0.0.1:7878").unwrap();
-
-    for stream in listener.incoming() {
-        let stream = stream.unwrap();
-
-        handle_connection(stream);
-    }
+#[get("/")]
+async fn hello() -> impl Responder {
+    HttpResponse::Ok().body("Hello world!")
 }
 
-fn handle_connection(mut stream: TcpStream) {
-    let buf_reader = BufReader::new(&mut stream);
-    let request_line = buf_reader.lines().next().unwrap().unwrap();
+#[post("/echo")]
+async fn echo(req_body: String) -> impl Responder {
+    HttpResponse::Ok().body(req_body)
+}
 
-    if request_line == "GET / HTTP/1.1" {
-        let status_line = "HTTP/1.1 200 OK";
-        let contents = fs::read_to_string("src/html/index.html").unwrap();
-        let length = contents.len();
+async fn manual_hello() -> impl Responder {
+    HttpResponse::Ok().body("Hey there!")
+}
 
-        let response = format!(
-            "{status_line}\r\nContent-Length: {length}\r\n\r\n{contents}"
-        );
+async fn index() -> impl Responder {
+    "Hello world!"
+}
 
-        stream.write_all(response.as_bytes()).unwrap();
-    } else {
-        let status_line = "HTTP/1.1 404 NOT FOUND";
-        let contents = fs::read_to_string("src/html/404.html").unwrap();
-        let length = contents.len();
+#[actix_web::main]
+async fn main() -> std::io::Result<()> {
+//     HttpServer::new(|| {
+//         App::new()
+//             .service(hello)
+//             .service(echo)
+//             .route("/hey", web::get().to(manual_hello))
+//             .service(index)
 
-        let response = format!(
-            "{status_line}\r\nContent-Length: {length}\r\n\r\n{contents}"
-        );
-
-        stream.write_all(response.as_bytes()).unwrap();
-    }
+//     })
+//     .bind(("127.0.0.1", 8080))?
+//     .run()
+//     .await
+// }
+HttpServer::new(|| {
+    App::new().service(
+        // prefixes all resources and routes attached to it...
+        web::scope("/app")
+            // ...so this handles requests for `GET /app/index.html`
+            .route("html/index.html", web::get().to(index)),
+    )
+})
+.bind(("127.0.0.1", 8080))?
+.run()
+.await
 }

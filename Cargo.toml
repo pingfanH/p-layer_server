@@ -1,8 +1,11 @@
 [package]
-name = "server"
+name = "p-layer-server"
 version = "0.1.0"
 edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
+awmp = { version = "0.8.1"}
+#actix="0.13.0"
+actix-web = "4"
