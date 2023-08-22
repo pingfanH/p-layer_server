@@ -7,14 +7,12 @@ pub fn str2json(str:&str)->serde_json::Value {
     
     // 创建JSON对象
     let json_obj = json!({
-        "user_id": user[0],
-        "user_account": user[1],
-        "user_password": user[2],
-        "user_name": user[3],
+        "user_account": user[0],
+        "user_password": user[1],
+        "user_name": user[2],
+        "user_gender": user[3],
         "user_age": user[4],
-        "user_info": user[5],
-        "user_sign_date": user[6],
-        "user_music_number": user[7].parse::<u32>().unwrap(),
+        "user_info": user[5]
     });
     
     // 将JSON对象打印出来

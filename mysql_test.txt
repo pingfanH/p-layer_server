@@ -3,6 +3,7 @@ mysql -hlocalhost -uroot -p123456
 use p_layer;
 
 DROP TABLE user_data;//删除表
+source D:\project\RUST\p-layer_server\p_layer_db.sql//使用sql脚本
 
 
 INSERT INTO user_data (user_id, user_account, user_password, user_name,user_gender,user_age,user_info,user_sign_date,user_music_number)

@@ -1,7 +1,4 @@
 #[macro_use] extern crate rocket;
-
-use rocket::http::Header;
-use rocket::Request;
 use mysql::*;
 use mysql::prelude::*;
 // use rocket::data::{self, FromData};
@@ -18,34 +15,48 @@ use mysql::prelude::*;
 //use rocket::fs::{FileServer, relative};
 mod json;
 mod MysqlFn;
+mod Ultis;
 //#[derive(Debug, PartialEq, Eq)]
 
 
 #[get("/query_all_user")]
 async fn query_all_user() -> String {
-    let mut items: Vec<(String,String,String,String,String,String,String,String,i32)> = Vec::new();
-    let result: Vec<(String,String,String,String,String,String,String,String,i32)> = MysqlFn::query_all("mysql://root:123456@localhost:3306/p_layer","user_data");
+    let mut items: Vec<(String,String,String,String,String,String,String,String,String,i32)> = Vec::new();
+    let result: Vec<(String,String,String,String,String,String,String,String,String,i32)> = MysqlFn::query_all("mysql://root:123456@localhost:3306/p_layer","user_data");
 
-    for (user_id, user_account, user_password, user_name,user_gender,user_age,user_info,user_sign_date,user_music_number) in result {
-        items.push((user_id, user_account, user_password, user_name,user_gender,user_age,user_info,user_sign_date,user_music_number));
+    for (user_token,user_id, user_account, user_password, user_name,user_gender,user_age,user_info,user_sign_date,user_music_number) in result {
+        items.push((user_token,user_id, user_account, user_password, user_name,user_gender,user_age,user_info,user_sign_date,user_music_number));
     }
 
     serde_json::to_string(&items).unwrap()
 }
 
-#[get("/query_user/<user>")]
-async fn query_user(user:&str) -> String {
+#[get("/query_user/<token>")]
+async fn query_user(token:&str) -> String {
     // let header = Header::new("X-Custom-Header", "custom value");
     // assert_eq!(header.to_string(), "X-Custom-Header: custom value");
-    let mut items: Vec<(String,String,String,String,String,String,String,String,i32)> = Vec::new();
-    let result: Vec<(String,String,String,String,String,String,String,String,i32)> = MysqlFn::query_user("mysql://root:123456@localhost:3306/p_layer","user_data",user);
+    let mut items: Vec<(String,String,String,String,String,String,String,String,String,i32)> = Vec::new();
+    let result: Vec<(String,String,String,String,String,String,String,String,String,i32)> = MysqlFn::query_user("mysql://root:123456@localhost:3306/p_layer","user_data",token);
 
-    for (user_id, user_account, user_password, user_name,user_gender,user_age,user_info,user_sign_date,user_music_number) in result {
-        items.push((user_id, user_account, user_password, user_name,user_gender,user_age,user_info,user_sign_date,user_music_number));
+    for (user_token,user_id, user_account, user_password, user_name,user_gender,user_age,user_info,user_sign_date,user_music_number) in result {
+        items.push((user_token,user_id, user_account, user_password, user_name,user_gender,user_age,user_info,user_sign_date,user_music_number));
     }
 
     serde_json::to_string(&items).unwrap()
+}
 
+#[get("/get_token/<account>/<password>")]
+async fn get_token(account:&str,password:&str) -> String {
+    // let header = Header::new("X-Custom-Header", "custom value");
+    // assert_eq!(header.to_string(), "X-Custom-Header: custom value");
+    let mut items: Vec<(String,String,String,String,String,String,String,String,String,i32)> = Vec::new();
+    let result: Vec<(String,String,String,String,String,String,String,String,String,i32)> = MysqlFn::login("mysql://root:123456@localhost:3306/p_layer","user_data",account,password);
+
+    for (user_token,user_id, user_account, user_password, user_name,user_gender,user_age,user_info,user_sign_date,user_music_number) in result {
+        items.push((user_token,user_id, user_account, user_password, user_name,user_gender,user_age,user_info,user_sign_date,user_music_number));
+    }
+
+    serde_json::to_string(&items).unwrap()
 }
 
 #[get("/test", data="<value>")]
@@ -63,29 +74,64 @@ async fn create_user(user:&str){
     let pool = Pool::new(url).unwrap();
     let mut conn = pool.get_conn().unwrap();
     //println!("item_iditem_id{}",items_data["item_id"]);
+    let token=Ultis::MadeToken(30);
+    let uid=Ultis::MadeUID(6);
+    let account=user_data["user_account"].as_str().unwrap();
+    let password=user_data["user_password"].as_str().unwrap();
+    let name=user_data["user_name"].as_str().unwrap();
+    let gender=user_data["user_gender"].as_str().unwrap();
+    let age=user_data["user_age"].as_str().unwrap();
+    let info=user_data["user_info"].as_str().unwrap();
+    let sign_date=Ultis::GetDate();
 
-    let str1=user_data["user_id"].as_str().unwrap();
-    let str2=user_data["user_account"].as_str().unwrap();
-    let str3=user_data["user_password"].as_str().unwrap();
-    let str4=user_data["user_name"].as_str().unwrap();
-    let str5=user_data["user_age"].as_str().unwrap();
-    let str6=user_data["user_info"].as_str().unwrap();
-    let str7=user_data["user_sign_date"].as_str().unwrap();
-    let str8=user_data["user_music_number"].to_string();
+    
+
     let query_all: String =format!(r"
-    INSERT INTO user_data (user_id, user_account, user_password,user_name,user_age,user_info,user_sign_date,user_music_number) 
-    VALUES ('{}','{}','{}','{}','{}','{}','{}',{});
-    ",str1,str2,str3,str4,str5,str6,str7,str8) ;
+    INSERT INTO user_data (user_token,user_id,user_account,user_password,user_name,user_gender,user_age,user_info,user_sign_date,user_music_number) 
+    VALUES ('{}','{}','{}','{}','{}','{}','{}','{}','{}',0);
+    ",token.as_str(),uid,account,password,name,gender,age,info,sign_date.as_str()) ;
     println!("{}",query_all);
     conn.query_drop(query_all);
 }
 #[post("/user/update",data="<user>")]
 async fn update_user(user:&str){
-    let mut body_data: Vec<(String,String)> = Vec::new();
+    let mut user_data: Vec<(String)> = Vec::new();
     println!("user: {}", user);
     let json_value: serde_json::Value = serde_json::from_str(user).unwrap();
 
-    println!("Original JSON string: {}", json_value);
+    let url = "mysql://root:123456@localhost:3306/p_layer";
+    let pool = Pool::new(url).unwrap();
+    let mut conn = pool.get_conn().unwrap();
+    if let Some(user_token) = json_value[0].get("user_token") {
+        let user_token = user_token.as_str().unwrap().replace("\"", "");
+        if let Some(user_name) = json_value[0].get("user_name") {
+            let user_name = user_name.as_str().unwrap().replace("\"", "");
+            user_data.push(format!(r"UPDATE user_data SET user_name='{}' WHERE user_token='{}';", user_name,user_token));
+
+        }
+        if let Some(user_gender) = json_value[0].get("user_gender") {
+            let user_gender = user_gender.as_str().unwrap().replace("\"", "");
+            user_data.push(format!(r"UPDATE user_data SET user_gender='{}' WHERE user_token='{}';", user_gender,user_token));
+        }
+        if let Some(user_age) = json_value[0].get("user_age") {
+            let user_age = user_age.as_str().unwrap().replace("\"", "");
+            user_data.push(format!(r"UPDATE user_data SET user_age='{}' WHERE user_token='{}';", user_age,user_token));
+        }
+        if let Some(user_info) = json_value[0].get("user_info") {
+            let user_info = user_info.as_str().unwrap().replace("\"", "");
+            user_data.push(format!(r"UPDATE user_data SET user_info='{}' WHERE user_token='{}';", user_info,user_token));
+        }
+
+        for data in user_data{
+            println!("{:#?}", data);
+            conn.query_drop(data);
+        }
+    }
+
+
+
+    // println!("{}",json_value["user_name"]);
+
     //let mut items: Vec<(i32, String, String, String)> = Vec::new();
     let url = "mysql://root:123456@localhost:3306/p_layer";
     let pool = Pool::new(url).unwrap();
@@ -107,6 +153,6 @@ async fn everything() ->String{format!("你访问这里干什么")}
 fn rocket() -> _ {
     rocket::build()
     .mount("/", routes![everything])
-    .mount("/api", routes![query_all_user,upload,create_user,query_user,test,update_user])
+    .mount("/api", routes![query_all_user,upload,create_user,query_user,test,update_user,get_token])
     //.mount("/", FileServer::from(relative!("static")))
 }
