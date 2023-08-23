@@ -1582,9 +1582,11 @@ dependencies = [
  "mysql",
  "rand 0.8.5",
  "rocket 0.5.0-rc.3",
+ "rocket-multipart-form-data",
  "rocket_contrib",
  "serde",
  "serde_json",
+ "tokio",
 ]
 
 [[package]]
@@ -2030,6 +2032,18 @@ dependencies = [
  "ubyte",
  "version_check 0.9.4",
  "yansi 0.5.1",
+]
+
+[[package]]
+name = "rocket-multipart-form-data"
+version = "0.10.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "9a8148192183eb2a7c1438e603fb8db1d9020739776aecd11a4f821b578575c3"
+dependencies = [
+ "mime 0.3.17",
+ "multer",
+ "rocket 0.5.0-rc.3",
+ "tokio-util",
 ]
 
 [[package]]
@@ -2653,6 +2667,7 @@ dependencies = [
  "libc",
  "mio 0.8.8",
  "num_cpus",
+ "parking_lot",
  "pin-project-lite",
  "signal-hook-registry",
  "socket2 0.5.3",
