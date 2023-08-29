@@ -1,13 +1,16 @@
 #![feature(proc_macro_hygiene, decl_macro)]
 
-#[macro_use] extern crate rocket;
+#[macro_use] 
+extern crate rocket;
+
 extern crate rocket_multipart_form_data;
 use rocket::form::Form;
 use rocket::fs::TempFile;
 use rocket::http::ContentType;
 
 use rocket_multipart_form_data::{mime, MultipartFormDataOptions, MultipartFormData, MultipartFormDataField, Repetition};
-
+use rocket::fs::NamedFile;
+use std::path::PathBuf;
 use mysql::*;
 use mysql::prelude::*;
 use rocket::Data;
@@ -19,14 +22,19 @@ use rocket::http::Status;
 use rocket::response::status;
 use rocket::tokio::fs::File;
 use std::path::Path;
-use std::io;
+use std::{io, fs, env};
+use std::env::var;
+use std::fmt::format;
 use rocket::http::RawStr;
 use std::io::Write;
+use chrono::format::StrftimeItems;
+use chrono::Local;
 
 use rocket::response::status::Custom;
 
 use rocket::tokio::fs::File as TokioFile;
-
+use serde_json::json;
+use crate::MysqlFn::{musiclist, querymusiclist};
 // use rocket::data::{self, FromData};
 // use rocket::Data;
 // use std::io::Read;
@@ -50,8 +58,10 @@ struct Upload<'f> {
 
 #[get("/query_all_user")]
 async fn query_all_user() -> String {
+    dotenv::from_filename(".env").expect("Failed to load .env file");
+    let DATABASE_URL = env::var("DATABASE_URL").expect("SERVER_URL not found in .env file");
     let mut items: Vec<(String,String,String,String,String,String,String,String,String,i32)> = Vec::new();
-    let result: Vec<(String,String,String,String,String,String,String,String,String,i32)> = MysqlFn::query_all("mysql://root:123456@localhost:3306/p_layer","user_data");
+    let result: Vec<(String,String,String,String,String,String,String,String,String,i32)> = MysqlFn::query_all(&DATABASE_URL,"user_data");
 
     for (user_token,user_id, user_account, user_password, user_name,user_gender,user_age,user_info,user_sign_date,user_music_number) in result {
         items.push((user_token,user_id, user_account, user_password, user_name,user_gender,user_age,user_info,user_sign_date,user_music_number));
@@ -62,10 +72,12 @@ async fn query_all_user() -> String {
 
 #[get("/query_user/<token>")]
 async fn query_user(token:&str) -> String {
+    dotenv::from_filename(".env").expect("Failed to load .env file");
+    let DATABASE_URL = env::var("DATABASE_URL").expect("SERVER_URL not found in .env file");
     // let header = Header::new("X-Custom-Header", "custom value");
     // assert_eq!(header.to_string(), "X-Custom-Header: custom value");
     let mut items: Vec<(String,String,String,String,String,String,String,String,String,i32)> = Vec::new();
-    let result: Vec<(String,String,String,String,String,String,String,String,String,i32)> = MysqlFn::query_user("mysql://root:123456@localhost:3306/p_layer","user_data",token);
+    let result: Vec<(String,String,String,String,String,String,String,String,String,i32)> = MysqlFn::query_user(&DATABASE_URL,"user_data",token);
 
     for (user_token,user_id, user_account, user_password, user_name,user_gender,user_age,user_info,user_sign_date,user_music_number) in result {
         items.push((user_token,user_id, user_account, user_password, user_name,user_gender,user_age,user_info,user_sign_date,user_music_number));
@@ -76,10 +88,12 @@ async fn query_user(token:&str) -> String {
 
 #[get("/get_token/<account>/<password>")]
 async fn get_token(account:&str,password:&str) -> String {
+    dotenv::from_filename(".env").expect("Failed to load .env file");
+    let DATABASE_URL = env::var("DATABASE_URL").expect("SERVER_URL not found in .env file");
     // let header = Header::new("X-Custom-Header", "custom value");
     // assert_eq!(header.to_string(), "X-Custom-Header: custom value");
     let mut items: Vec<(String,String,String,String,String,String,String,String,String,i32)> = Vec::new();
-    let result: Vec<(String,String,String,String,String,String,String,String,String,i32)> = MysqlFn::login("mysql://root:123456@localhost:3306/p_layer","user_data",account,password);
+    let result: Vec<(String,String,String,String,String,String,String,String,String,i32)> = MysqlFn::login(&DATABASE_URL,"user_data",account,password);
 
     for (user_token,user_id, user_account, user_password, user_name,user_gender,user_age,user_info,user_sign_date,user_music_number) in result {
         items.push((user_token,user_id, user_account, user_password, user_name,user_gender,user_age,user_info,user_sign_date,user_music_number));
@@ -90,85 +104,125 @@ async fn get_token(account:&str,password:&str) -> String {
 
 #[get("/test", data="<value>")]
 async fn test(value:&str)-> String{println!("test:{}",value);format!("test:{}",value)}
-#[post("/upload", data = "<data>")]
-async fn upload(data: rocket::Data<'_>) -> std::result::Result<String, std::io::Error> {
-    let mut file = File::create("upload/pingfanh").await?;
+#[post("/upload/<user>/<filename>", data = "<data>")]
+async fn upload(user:&str,filename:&str,data: rocket::Data<'_>) -> std::result::Result<String, std::io::Error> {
+    let folder_name = format!("upload/{}",user);
+    // 创建文件夹
+    match fs::create_dir(folder_name) {
+        Ok(_) => println!(""),
+        Err(_) => println!(""),
+    }
 
+    let mut file = File::create(format!("upload/{}/{}",user,filename)).await?;
+    
     // 将二进制数据写入文件
     data.open(100000.kilobytes()).stream_to(&mut file).await?;
 
     Ok("文件上传成功".to_string())
 }
-// #[post("/upload", data = "<data>")]
-// async fn upload(content_type: &ContentType, data: rocket::data::Data<'_>) -> &'static str
-// {
-//     let mut options = MultipartFormDataOptions::with_multipart_form_data_fields(
-//         vec! [
-//             MultipartFormDataField::file("photo").content_type_by_string(Some(mime::IMAGE_STAR)).unwrap(),
-//             MultipartFormDataField::raw("fingerprint").size_limit(4096),
-//             MultipartFormDataField::text("name"),
-//             MultipartFormDataField::text("email").repetition(Repetition::fixed(3)),
-//             MultipartFormDataField::text("email"),
-//         ]
-//     );
+#[post("/uploadmusic/<p>/<user>/<filename>", data = "<data>")]
+async fn uploadmusic(p:bool,user:&str,filename:&str,data: rocket::Data<'_>) -> std::result::Result<String, std::io::Error> {
+    dotenv::from_filename(".env").expect("Failed to load .env file");
+    let DATABASE_URL = env::var("DATABASE_URL").expect("SERVER_URL not found in .env file");
+    let url = DATABASE_URL;
+    let pool = Pool::new(url).unwrap();
+    let mut conn = pool.get_conn().unwrap();
 
-//     let mut multipart_form_data = MultipartFormData::parse(content_type, data, options).await.unwrap();
 
-//     let photo = multipart_form_data.files.get("photo"); // Use the get method to preserve file fields from moving out of the MultipartFormData instance in order to delete them automatically when the MultipartFormData instance is being dropped
-//     let fingerprint = multipart_form_data.raw.remove("fingerprint"); // Use the remove method to move raw fields out of the MultipartFormData instance (recommended)
-//     let name = multipart_form_data.texts.remove("name"); // Use the remove method to move text fields out of the MultipartFormData instance (recommended)
-//     let email = multipart_form_data.texts.remove("email");
 
-//     if let Some(file_fields) = photo {
-//         let file_field = &file_fields[0]; // Because we only put one "photo" field to the allowed_fields, the max length of this file_fields is 1.
+    let local_time = Local::now();
+    let ymd = "%Y%m%d";
+    let hms = "%H%M%S";
+    let date=format!("{}{}",ymd,hms);
+    let date=StrftimeItems::new(date.as_str());
+    let date=local_time.format_with_items(date);
+    let date=date.to_string();
 
-//         let _content_type = &file_field.content_type;
-//         let _file_name = &file_field.file_name;
-//         let _path = &file_field.path;
-//         std::fs::copy(_path, "/update/photo.png").unwrap();
+    //let musicid=MadeToken(10);
+    let mut path:String="".to_string();
+    let folder_name = format!("upload/{}/music",user);
+    if p{
+        path=format!("global/music/{}{}{}",user,filename,date);
+    }
+    else{
+        path=format!("{}/music/{}{}",user,filename,date);
+        // 创建文件夹
+        match fs::create_dir(folder_name) {
+            Ok(_) => println!(""),
+            Err(_) => println!(""),
+        }
+    }
+    let musicdata=format!("INSERT INTO music_list (user,name,date,public) VALUES('{}','{}','{}',{})",user,filename,date,p);
 
-//         // You can now deal with the uploaded file.
-//     }
 
-//     if let Some(mut raw_fields) = fingerprint {
-//         let raw_field = raw_fields.remove(0); // Because we only put one "fingerprint" field to the allowed_fields, the max length of this raw_fields is 1.
+    let file_name=path;
+    let mut file = File::create(format!("upload/{}",file_name)).await?;
 
-//         let _content_type = raw_field.content_type;
-//         let _file_name = raw_field.file_name;
-//         let _raw = raw_field.raw;
+    // 将二进制数据写入文件
+    data.open(100000.kilobytes()).stream_to(&mut file).await?;
+    conn.query_drop(musicdata);
 
-//         // You can now deal with the raw data.
-//     }
+    Ok("文件上传成功".to_string())
+}
+#[get("/download/<user>/<filename>")]
+async fn download(user:&str,filename:&str) -> Option<NamedFile> {
+    let path = PathBuf::from(format!("upload/{}/{}",user,filename));
+    println!("{}",format!("upload/{}/{}",user,filename));
+    NamedFile::open(path).await.ok()
+}
 
-//     if let Some(mut text_fields) = name {
-//         let text_field = text_fields.remove(0); // Because we only put one "text" field to the allowed_fields, the max length of this text_fields is 1.
+#[get("/getmusiclist/<user>/<public>")]
+async fn getmusiclist(user: String, public: &str)->String{
+    let userclone=user.clone();
+    let music_list: Vec<musiclist> = querymusiclist(user, public);
 
-//         let _content_type = text_field.content_type;
-//         let _file_name = text_field.file_name;
-//         let _text = text_field.text;
+    let mut music_list_json: Vec<String>= vec![];
 
-//         // You can now deal with the text data.
-//     }
+    for list in music_list {
+       //println!("{:?}",list);
+        let json_string = serde_json::to_value(list).unwrap();
+        //println!("{}",json_string);
+        let json_string=json_string.to_string();
+        music_list_json.push(json_string);
+    }
+    println!("获取用户{}的音乐数据",&userclone);
+    let music_list_json=music_list_json.join(",");
+    let music_list_json=format!("[{}]",music_list_json);
+    music_list_json
+}
+#[get("/getmusic/<user>/<name>/<public>")]
+async fn getmusic(user: String,name:String, public: &str)->String{
+    let userclone=user.clone();
+    let music_list: Vec<musiclist> = querymusiclist(user, public);
 
-//     if let Some(text_fields) = email {
-//         for text_field in text_fields { // We put "email" field to the allowed_fields for two times and let the first time repeat for 3 times, so the max length of this text_fields is 4.
-//             let _content_type = text_field.content_type;
-//             let _file_name = text_field.file_name;
-//             let _text = text_field.text;
+    let mut music_list_json: Vec<String>= vec![];
 
-//             // You can now deal with the text data.
-//         }
-//     }
-
-//     "ok"
-// }
+    for list in music_list {
+       //println!("{:?}",list);
+        let json_string = serde_json::to_value(list).unwrap();
+        //println!("{}",json_string);
+        let json_string=json_string.to_string();
+        music_list_json.push(json_string);
+    }
+    println!("获取用户{}的音乐数据",&userclone);
+    let music_list_json=music_list_json.join(",");
+    let music_list_json=format!("[{}]",music_list_json);
+    let musicList: Vec<serde_json::Value> = serde_json::from_str(music_list_json.as_str()).unwrap();
+    println!("{:?}",musicList);
+    let music_list_json=Ultis::selectfromjson(musicList,"name",name).await;
+    println!("{:?}",music_list_json);
+    let text=format!("{},{},{},{}",music_list_json["user"],music_list_json["name"],music_list_json["date"],music_list_json["public"]);
+    text.replace("\"","")
+}
 
 #[post("/user/create",data="<user>")]
 async fn create_user(user:&str){
     let user_data=json::str2json(user);
     println!("{}",user_data);
     //let mut items: Vec<(i32, String, String, String)> = Vec::new();
-    let url = "mysql://root:123456@localhost:3306/p_layer";
+    dotenv::from_filename(".env").expect("Failed to load .env file");
+    let DATABASE_URL = env::var("DATABASE_URL").expect("SERVER_URL not found in .env file");
+    let url = &DATABASE_URL;
     let pool = Pool::new(url).unwrap();
     let mut conn = pool.get_conn().unwrap();
     //println!("item_iditem_id{}",items_data["item_id"]);
@@ -193,29 +247,33 @@ async fn create_user(user:&str){
 }
 #[post("/user/update",data="<user>")]
 async fn update_user(user:&str){
+    dotenv::from_filename(".env").expect("Failed to load .env file");
+    let DATABASE_URL = env::var("DATABASE_URL").expect("SERVER_URL not found in .env file");
+
     let mut user_data: Vec<(String)> = Vec::new();
     println!("user: {}", user);
     let json_value: serde_json::Value = serde_json::from_str(user).unwrap();
+    
 
-    let url = "mysql://root:123456@localhost:3306/p_layer";
+    let url = &DATABASE_URL;
     let pool = Pool::new(url).unwrap();
     let mut conn = pool.get_conn().unwrap();
     if let Some(user_token) = json_value[0].get("user_token") {
         let user_token = user_token.as_str().unwrap().replace("\"", "");
         if let Some(user_name) = json_value[0].get("user_name") {
-            let user_name = user_name.as_str().unwrap().replace("\"", "");
+           let user_name = user_name.as_str().unwrap().replace("\"", "");
             user_data.push(format!(r"UPDATE user_data SET user_name='{}' WHERE user_token='{}';", user_name,user_token));
 
         }
         if let Some(user_gender) = json_value[0].get("user_gender") {
-            let user_gender = user_gender.as_str().unwrap().replace("\"", "");
+           let user_gender = user_gender.as_str().unwrap().replace("\"", "");
             user_data.push(format!(r"UPDATE user_data SET user_gender='{}' WHERE user_token='{}';", user_gender,user_token));
         }
         if let Some(user_age) = json_value[0].get("user_age") {
             let user_age = user_age.as_str().unwrap().replace("\"", "");
             user_data.push(format!(r"UPDATE user_data SET user_age='{}' WHERE user_token='{}';", user_age,user_token));
         }
-        if let Some(user_info) = json_value[0].get("user_info") {
+        if let Some(user_info) = json_value[0].get("user_intro") {
             let user_info = user_info.as_str().unwrap().replace("\"", "");
             user_data.push(format!(r"UPDATE user_data SET user_info='{}' WHERE user_token='{}';", user_info,user_token));
         }
@@ -231,7 +289,9 @@ async fn update_user(user:&str){
     // println!("{}",json_value["user_name"]);
 
     //let mut items: Vec<(i32, String, String, String)> = Vec::new();
-    let url = "mysql://root:123456@localhost:3306/p_layer";
+    dotenv::from_filename(".env").expect("Failed to load .env file");
+    let DATABASE_URL = env::var("DATABASE_URL").expect("SERVER_URL not found in .env file");
+    let url = &DATABASE_URL;
     let pool = Pool::new(url).unwrap();
     let mut conn = pool.get_conn().unwrap();
     //println!("item_iditem_id{}",items_data["item_id"]);
@@ -251,6 +311,6 @@ async fn everything() ->String{format!("你访问这里干什么")}
 fn rocket() -> _ {
     rocket::build()
     .mount("/", routes![everything])
-    .mount("/api", routes![query_all_user,upload,create_user,query_user,test,update_user,get_token])
+    .mount("/api", routes![query_all_user,upload,create_user,query_user,test,update_user,get_token,download,uploadmusic,getmusiclist,getmusic])
     //.mount("/", FileServer::from(relative!("static")))
 }

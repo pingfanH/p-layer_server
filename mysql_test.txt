@@ -1,7 +1,8 @@
 
 mysql -hlocalhost -uroot -p123456
 use p_layer;
-
+SELECT * FROM user_data;//选择所有
+SELECT * FROM music_list;//选择所有
 DROP TABLE user_data;//删除表
 source D:\project\RUST\p-layer_server\p_layer_db.sql//使用sql脚本
 
@@ -11,7 +12,9 @@ VALUES ('1','2146265126','Ljq071023251','平凡H','男','15','开发人员','202
 VALUES ('2','2804893465','123456','汤圆','女','13','设计师','2023/8/19/0:22',2);//在表中插入数值
 
 
-SELECT * FROM user_data;//选择所有
+
 
 UPDATE user_data SET user_name="平凡H" WHERE user_account="2146265126";
 UPDATE user_data SET user_name="汤圆" WHERE user_account="2804893465";
+
+
