@@ -15,6 +15,6 @@ CREATE TABLE music_list (
     user VARCHAR(50) NOT NULL,
     name VARCHAR(50) NOT NULL,
     date VARCHAR(50) NOT NULL,
-    public BOOLEAN NOT NULL
+    public BOOLEAN NOT NULLp_layer_db.sql
 );
 

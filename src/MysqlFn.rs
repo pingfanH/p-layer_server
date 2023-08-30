@@ -40,18 +40,28 @@ pub fn query_user(url:&str,table:&str,token:&str)->Vec<(String,String,String,Str
     result
 
 }
-pub fn querymusiclist(user:String,public:&str)->Vec<musiclist>{
+pub fn querymusiclist(user:String,public:&str,all:bool)->Vec<musiclist>{
     dotenv::from_filename(".env").expect("Failed to load .env file");
     let DATABASE_URL = env::var("DATABASE_URL").expect("SERVER_URL not found in .env file");
     let pool = Pool::new(DATABASE_URL).unwrap();
     let mut conn = pool.get_conn().unwrap();
-    let mut query_all = format!(r"SELECT * FROM music_list WHERE user='{}'",user);
+    let mut query_all = format!(r"SELECT * FROM music_list");
+    if !all{
+        query_all = format!(r"{} WHERE user='{}'",query_all,user);
+    }
+    if all&&public=="true"{
+        query_all=format!("{} WHERE public=true",query_all);
+    }
+    else
+    if all&&public=="false"{
+        query_all=format!("{} WHERE public=false",query_all);
+    }
 
-    if public=="true"{
+    if !all&&public=="true"{
         query_all=format!("{} AND public=true",query_all);
     }
     else
-    if public=="false"{
+    if !all&&public=="false"{
         query_all=format!("{} AND public=false",query_all);
     };
     let musiclist: Vec<musiclist> = conn

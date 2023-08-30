@@ -4,6 +4,8 @@ use p_layer;
 SELECT * FROM user_data;//选择所有
 SELECT * FROM music_list;//选择所有
 DROP TABLE user_data;//删除表
+DROP TABLE music_list;//删除表
+
 source D:\project\RUST\p-layer_server\p_layer_db.sql//使用sql脚本
 
 
@@ -11,7 +13,8 @@ INSERT INTO user_data (user_id, user_account, user_password, user_name,user_gend
 VALUES ('1','2146265126','Ljq071023251','平凡H','男','15','开发人员','2023/8/19/0:21',0);//在表中插入数值
 VALUES ('2','2804893465','123456','汤圆','女','13','设计师','2023/8/19/0:22',2);//在表中插入数值
 
-
+INSERT INTO music_list(user,name,date,public)
+VALUES('2146265126','12ad23q','123456',true);
 
 
 UPDATE user_data SET user_name="平凡H" WHERE user_account="2146265126";

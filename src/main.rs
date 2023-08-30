@@ -4,13 +4,17 @@
 extern crate rocket;
 
 extern crate rocket_multipart_form_data;
+use rocket::figment::Figment;
+use rocket::figment::providers::{Toml, Format};
 use rocket::form::Form;
 use rocket::fs::TempFile;
 use rocket::http::ContentType;
 
 use rocket_multipart_form_data::{mime, MultipartFormDataOptions, MultipartFormData, MultipartFormDataField, Repetition};
 use rocket::fs::NamedFile;
+use std::net::IpAddr;
 use std::path::PathBuf;
+use std::str::FromStr;
 use mysql::*;
 use mysql::prelude::*;
 use rocket::Data;
@@ -116,7 +120,7 @@ async fn upload(user:&str,filename:&str,data: rocket::Data<'_>) -> std::result::
     let mut file = File::create(format!("upload/{}/{}",user,filename)).await?;
     
     // 将二进制数据写入文件
-    data.open(100000.kilobytes()).stream_to(&mut file).await?;
+    data.open(20000.kilobytes()).stream_to(&mut file).await?;
 
     Ok("文件上传成功".to_string())
 }
@@ -159,7 +163,7 @@ async fn uploadmusic(p:bool,user:&str,filename:&str,data: rocket::Data<'_>) -> s
     let mut file = File::create(format!("upload/{}",file_name)).await?;
 
     // 将二进制数据写入文件
-    data.open(100000.kilobytes()).stream_to(&mut file).await?;
+    data.open(20000.kilobytes()).stream_to(&mut file).await?;
     conn.query_drop(musicdata);
 
     Ok("文件上传成功".to_string())
@@ -171,10 +175,17 @@ async fn download(user:&str,filename:&str) -> Option<NamedFile> {
     NamedFile::open(path).await.ok()
 }
 
+#[get("/downloapubmusic/<filename>")]
+async fn downloapubmusic(filename:&str) -> Option<NamedFile> {
+    let path = PathBuf::from(format!("upload/global/music/{}",filename));
+    println!("{}",format!("upload/global/music/{}",filename));
+    NamedFile::open(path).await.ok()
+}
+
 #[get("/getmusiclist/<user>/<public>")]
 async fn getmusiclist(user: String, public: &str)->String{
     let userclone=user.clone();
-    let music_list: Vec<musiclist> = querymusiclist(user, public);
+    let music_list: Vec<musiclist> = querymusiclist(user, public,false);
 
     let mut music_list_json: Vec<String>= vec![];
 
@@ -190,10 +201,31 @@ async fn getmusiclist(user: String, public: &str)->String{
     let music_list_json=format!("[{}]",music_list_json);
     music_list_json
 }
+
+#[get("/getmusiclistall/<public>")]
+async fn getmusiclistall(public: &str)->String{
+
+    let music_list: Vec<musiclist> = querymusiclist("user".to_string(), public,true);
+
+    let mut music_list_json: Vec<String>= vec![];
+
+    for list in music_list {
+        //println!("{:?}",list);
+        let json_string = serde_json::to_value(list).unwrap();
+        //println!("{}",json_string);
+        let json_string=json_string.to_string();
+        music_list_json.push(json_string);
+    }
+    println!("获取音乐数据");
+    let music_list_json=music_list_json.join(",");
+    let music_list_json=format!("[{}]",music_list_json);
+    music_list_json
+}
+
 #[get("/getmusic/<user>/<name>/<public>")]
 async fn getmusic(user: String,name:String, public: &str)->String{
     let userclone=user.clone();
-    let music_list: Vec<musiclist> = querymusiclist(user, public);
+    let music_list: Vec<musiclist> = querymusiclist(user, public,false);
 
     let mut music_list_json: Vec<String>= vec![];
 
@@ -235,7 +267,10 @@ async fn create_user(user:&str){
     let age=user_data["user_age"].as_str().unwrap();
     let info=user_data["user_info"].as_str().unwrap();
     let sign_date=Ultis::GetDate();
-
+    match fs::create_dir(format!("upload/{}",account)){
+        Ok(ok)=>ok,
+        Err(err)=>eprintln!("已有文件夹"),
+    };
     
 
     let query_all: String =format!(r"
@@ -309,8 +344,11 @@ async fn everything() ->String{format!("你访问这里干什么")}
 // } 
 #[launch]
 fn rocket() -> _ {
-    rocket::build()
+    let mut config = rocket::Config::default();
+    config.address = IpAddr::from_str("0.0.0.0").unwrap();
+
+    rocket::custom(config)
     .mount("/", routes![everything])
-    .mount("/api", routes![query_all_user,upload,create_user,query_user,test,update_user,get_token,download,uploadmusic,getmusiclist,getmusic])
+    .mount("/api", routes![query_all_user,upload,create_user,query_user,test,update_user,get_token,download,uploadmusic,getmusiclist,getmusic,downloapubmusic,getmusiclistall])
     //.mount("/", FileServer::from(relative!("static")))
 }
