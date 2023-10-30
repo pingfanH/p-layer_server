@@ -2,6 +2,7 @@ use std::fs;
 use std::path::Path;
 use rand::Rng;
 use chrono::Local;
+use chrono::{DateTime, TimeZone, Utc};
 use chrono::format::strftime::StrftimeItems;
 pub fn MadeUID(length: usize) -> String {
     let alphabet: &[u8] = b"0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ";
@@ -33,6 +34,11 @@ pub fn GetDate()->String{
     let date=StrftimeItems::new(date.as_str());
     let date=local_time.format_with_items(date);
     date.to_string()
+}
+pub fn get_date()->String{
+    let now = Utc::now();
+    let timestamp = now.timestamp_millis();
+    timestamp.to_string()
 }
 pub fn NewMusicPath(name:&str,user:&str,p:bool)->String{
     let local_time = Local::now();
@@ -106,8 +112,6 @@ pub async fn selectfromjson(jsonlist:Vec<serde_json::Value>,select:&str,value:St
         if i[select]==value{
             return i;
         }
-
-
     }.into()
 
 }

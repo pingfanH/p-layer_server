@@ -16,3 +16,4 @@ rand="*"
 chrono="*"
 tokio = { version = "1", features = ["full"] }
 dotenv = "0.15.0"
+rocket_cors = "0.6.0-alpha2"

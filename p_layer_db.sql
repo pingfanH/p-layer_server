@@ -1,20 +1,38 @@
-
-CREATE TABLE user_data (
-   user_token VARCHAR(50) UNIQUE NOT NULL,
-   user_id VARCHAR(50) UNIQUE NOT NULL,
-   user_account VARCHAR(50) UNIQUE NOT NULL,
-   user_password VARCHAR(50) NOT NULL,
-   user_name VARCHAR(50) UNIQUE NOT NULL,
-   user_gender VARCHAR(50) NOT NULL,
-   user_age VARCHAR(50) NOT NULL,
-   user_info VARCHAR(50) NOT NULL,
-   user_sign_date VARCHAR(50) NOT NULL,
-   user_music_number INT NOT NULL
+create table music_list
+(
+    user   varchar(50) not null,
+    name   varchar(50) not null,
+    date   varchar(50) not null,
+    public tinyint(1)  not null
 );
-CREATE TABLE music_list (
-    user VARCHAR(50) NOT NULL,
-    name VARCHAR(50) NOT NULL,
-    date VARCHAR(50) NOT NULL,
-    public BOOLEAN NOT NULLp_layer_db.sql
+
+create table user_data
+(
+    user_token        varchar(50) not null,
+    user_id           varchar(50) not null,
+    user_account      varchar(50) not null,
+    user_password     varchar(50) not null,
+    user_name         varchar(50) not null,
+    user_gender       varchar(50) not null,
+    user_age          varchar(50) not null,
+    user_info         varchar(50) not null,
+    user_sign_date    varchar(50) not null,
+    user_music_number int         not null,
+    constraint user_account
+        unique (user_account),
+    constraint user_id
+        unique (user_id),
+    constraint user_name
+        unique (user_name),
+    constraint user_token
+        unique (user_token)
+);
+
+create table user_play_list
+(
+    user   varchar(50) not null,
+    name   varchar(50) not null,
+    date   varchar(50) null,
+    public tinyint(1)  not null
 );
 
